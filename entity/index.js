@@ -50,6 +50,9 @@ var EntityGenerator = module.exports = function EntityGenerator(args, options, c
     } else if (this.name == '') {
         console.log(chalk.red('The entity name cannot be empty'));
         throw new Error("Validation error");
+    } else if (this.name.indexOf("Detail", this.name.length - "Detail".length) !== -1) {
+        console.log(chalk.red('The entity name cannot end with \'Detail\''));
+        throw new Error("Validation error");
     } else if (reservedWords_Java.indexOf(this.name.toUpperCase()) != -1) {
         console.log(chalk.red('The entity name cannot contain a Java reserved keyword'));
         throw new Error("Validation error");
@@ -113,6 +116,8 @@ EntityGenerator.prototype.askForFields = function askForFields() {
                     return 'Your field name cannot contain special characters';
                 } else if (input == '') {
                     return 'Your field name cannot be empty';
+                } else if (input.charAt(0) == input.charAt(0).toUpperCase()) {
+                    return 'Your field name cannot start with a upper case letter';
                 } else if (input == 'id' || fieldNamesUnderscored.indexOf(_s.underscored(input)) != -1) {
                     return 'Your field name cannot use an already existing field name';
                 } else if (reservedWords_Java.indexOf(input.toUpperCase()) != -1) {
@@ -448,6 +453,7 @@ EntityGenerator.prototype.askForRelationships = function askForRelationships() {
         return;
     }
     var packageFolder = this.packageFolder;
+    var name = this.name;
     var cb = this.async();
     this.relationshipId++;
     console.log(chalk.green('Generating relationships with other entities'));
@@ -557,6 +563,19 @@ EntityGenerator.prototype.askForRelationships = function askForRelationships() {
             default: false
         },
         {
+            when: function (response) {
+                return (response.relationshipAdd == true && (response.relationshipType == 'one-to-many' ||
+                    (response.relationshipType == 'many-to-many' && response.ownerSide == false) ||
+                    (response.relationshipType == 'one-to-one' && response.ownerSide == false)));
+            },
+            type: 'input',
+            name: 'mappedBy',
+            message: 'What field is used on the other entity to map this entity?',
+            default: function (response) {
+                 return name.charAt(0).toLowerCase() + name.slice(1);
+            }
+        },
+        {
             when: function(response) {
                 return (response.relationshipAdd == true && response.ownerSide == true && !shelljs.test('-f', 'src/main/java/' + packageFolder + '/domain/' + _s.capitalize(response.otherEntityName) + '.java'))
             },
@@ -591,7 +610,8 @@ EntityGenerator.prototype.askForRelationships = function askForRelationships() {
                 relationshipType: props.relationshipType,
                 otherEntityNameCapitalized: _s.capitalize(props.otherEntityName),
                 otherEntityField: props.otherEntityField,
-                ownerSide: props.ownerSide
+                ownerSide: props.ownerSide,
+                mappedBy: props.mappedBy
             }
             if (props.relationshipType == 'many-to-many' && props.ownerSide == true) {
                 this.fieldsContainOwnerManyToMany = true;
@@ -682,6 +702,12 @@ EntityGenerator.prototype.files = function files() {
         this.write(this.filename, JSON.stringify(this.data, null, 4));
     } else  {
         this.relationships = this.fileData.relationships;
+        for (var relationshipIdx in this.relationships) {
+            var relationship = this.relationships[relationshipIdx];
+            if (relationship.mappedBy == null) {
+                relationship.mappedBy = this.name.charAt(0).toLowerCase() + this.name.slice(1);
+            }
+        }
         this.fields = this.fileData.fields;
         for (var fieldIdx in this.fields) {
             var field = this.fields[fieldIdx];
@@ -794,21 +820,22 @@ EntityGenerator.prototype.files = function files() {
 
     // Copy for each
     this.copyI18n('ca');
+    this.copyI18n('zh-cn');
+    this.copyI18n('zh-tw');
     this.copyI18n('da');
     this.copyI18n('de');
     this.copyI18n('en');
-    this.copyI18n('es');
     this.copyI18n('fr');
+    this.copyI18n('hu');
+    this.copyI18n('it');
     this.copyI18n('ja');
     this.copyI18n('kr');
-    this.copyI18n('hu');
     this.copyI18n('pl');
     this.copyI18n('pt-br');
     this.copyI18n('ru');
-    this.copyI18n('sw');
+    this.copyI18n('es');
+    this.copyI18n('sv');
     this.copyI18n('tr');
-    this.copyI18n('zh-cn');
-    this.copyI18n('zh-tw');
 };
 
 EntityGenerator.prototype.copyI18n = function(language) {
